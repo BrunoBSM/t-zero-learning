@@ -18,3 +18,20 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu]
+
+  # t-zero + Google Research Football (see docker/Dockerfile.gfootball).
+  # CPU by default so it also starts on machines without an NVIDIA runtime:
+  #   docker compose run --rm gfootball python train.py --config dqn_gfootball_empty_goal
+  # With a GPU, copy the `deploy:` block from the t-zero service above.
+  gfootball:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.gfootball
+    image: t-zero-gfootball:latest
+    working_dir: /t-zero
+    volumes:
+      - .:/t-zero
+    env_file:
+      - .env
+    tty: true
+    stdin_open: true

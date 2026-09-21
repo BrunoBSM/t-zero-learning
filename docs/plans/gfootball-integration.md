@@ -77,67 +77,54 @@ Core rule: `envs/factory.py`, `envs/wrappers.py`, `train.py`, algorithms are
 **not** touched. Everything gfootball-specific lives in the two extension
 points.
 
-- [ ] 1.1 `envs/custom_envs/gfootball.py` — gymnasium shim
-  - `class GFootballEnv(gym.Env)` wrapping `gfootball.env.create_environment`.
-  - `reset(seed=None, options=None) -> (obs, info)`; seed forwarded if 0.7
-    finds a way, otherwise ignored and documented.
-  - `step(a) -> (obs, reward, terminated, truncated, info)`; gfootball only
-    yields `done`. Mapping: `terminated=done, truncated=False` (scenario
-    time-limit treated as terminal; note the bias in the docstring; revisit
-    if `info` lets us split them).
-  - Squeeze the leading player axis when controlling one player so spaces are
-    `Box(115,) float32` and `Discrete(19)`.
-  - `metadata["render_modes"]` and `render()` per 0.5 outcome.
-  - `close()` shuts the engine subprocess down.
-  - Factory `make_gfootball(scenario, representation="simple115_v2",
-    rewards="scoring,checkpoints", render_mode=None, **kw)` — all config
-    `env_kwargs` arrive here; `kw` forwarded to `create_environment`.
-- [ ] 1.2 `envs/custom_envs/__init__.py` — register ids, guarded by
-      `try: import gfootball`:
-  - `GFootball/academy_empty_goal_close-v0`
-  - `GFootball/academy_empty_goal-v0`
-  - `GFootball/academy_run_to_score-v0`
-  - `GFootball/academy_run_to_score_with_keeper-v0`
-  - `GFootball/academy_pass_and_shoot_with_keeper-v0`
-  - `GFootball/academy_3_vs_1_with_keeper-v0`
-  - (rest of the academy set is cheap to add; keep the list explicit so ids
-    are stable and versioned.)
-- [ ] 1.3 `envs/adapters/gfootball.py` — `register_adapter("GFootball/",
-      EnvAdapter(...))`: `supports_training_video` per 0.5; `skip_episode_stats`
-      stays `False` (stack adds `RecordEpisodeStatistics`); no custom
-      vectoriser or evaluate unless 0.6 forces it. Import from the bundled
-      adapters block in `envs/adapters/__init__.py` (guarded import, Meta-World
-      pattern).
-- [ ] 1.4 Config `configs/dqn_gfootball_empty_goal.yml` — `algorithm: dqn`,
-      `env_id: GFootball/academy_empty_goal_close-v0`, `env_kwargs` spelling
-      out representation/rewards, `num_envs: 1`, `track: true`,
-      `checkpoint_every: 0`, DQN hyperparameters tuned for a ~300 steps/s env
-      (fewer `total_timesteps`, `learning_starts`, buffer sized for it).
-      Comment header in the CartPole-config style.
-- [ ] 1.5 Tests `tests/test_gfootball.py` — `pytest.importorskip("gfootball")`
-      at module level: spaces, 5-tuple `step`, `reset` returns `(obs, info)`,
-      `discrete_control_wrappers` applies, `make_env` thunk builds. Keep
-      step counts tiny (engine start-up is seconds). `tests/test_configs_load.py`
-      covers the new YAML automatically.
-- [ ] 1.6 Smoke: `python train.py --config dqn_gfootball_empty_goal
-      --override total_timesteps=2000 track=false capture_video=false` runs
-      end-to-end incl. final eval. Then a real run to confirm learning on
-      `empty_goal_close` (should reach ~1.0 scoring within a few 10^5 steps).
-- [ ] 1.7 Docs: `docs/adding-a-new-environment.md` gets a short "GFootball"
-      note (guarded registration + shim as a worked example of Case 4);
-      `docs/quickstart-training.md` one-liner. Update
-      `/memories/repo/conventions.md`.
+- [x] 1.1 `envs/custom_envs/gfootball.py` — gymnasium shim `GFootballEnv`.
+  As built: `reset(seed=)` rebuilds the engine when the seed changes
+  (`game_engine_random_seed`); `terminated/truncated` split via raw
+  `steps_left` (goal on the last tick counts as terminated); lazy render
+  on/off around `RecordVideo` (default 640×360); `ACADEMY_SCENARIOS` tuple
+  drives registration; entry point `make_gfootball_env`.
+- [x] 1.2 `envs/custom_envs/__init__.py` — all 11 academy scenarios registered
+      as `GFootball/<scenario>-v0`, guarded by
+      `importlib.util.find_spec("gfootball")` (no import cost / banners).
+- [x] 1.3 `envs/adapters/gfootball.py` — `EnvAdapter(supports_training_video=False)`
+      for prefix `GFootball/`; imported in the bundled-adapters block.
+- [x] 1.4 `configs/dqn_gfootball_empty_goal.yml` — 200k steps, buffer 50k,
+      `learning_starts` 5k, `train_frequency` 4, hidden 256. Tuning pending
+      the first full run (see 1.6).
+- [x] 1.5 `tests/test_gfootball.py` — 15 tests (spaces, 5-tuple, seed
+      reproducibility, engine rebuild rule, terminated vs truncated incl. a
+      fake-core parametrisation, goal scoring, lazy render on/off, adapter,
+      factory + `discrete_control` stack, `rewards="scoring"` variant).
+      `tests/test_custom_envs.py` contract tests pick up the 11 ids too. Suite
+      in the image: 124 passed, 1 skipped (Meta-World) — excluding the
+      pre-existing DQN smoke gap (`SMOKE_SETTINGS` has no `dqn` entry).
+- [~] 1.6 Smoke: 3000-step run with the instructor solution → model.pt +
+      10 greedy eval episodes + `eval-episode-0.mp4` (640×360, 10 fps) in
+      47 s wall. Full 200k run in progress: ~55–65 steps/s once updates start
+      (CPU, host shared with another job) → ~1 h. Revisit `train_frequency`
+      if learning is fine but wall time is the bottleneck for students.
+- [x] 1.7 Docs: worked-example paragraph in `docs/adding-a-new-environment.md`
+      (Case 3 + 4); quickstart one-liner; `docker-compose.yml` `gfootball`
+      service; `cluster/t-zero-gfootball.def`.
+
+Found along the way (for Phase 2):
+- Files written by the container land root-owned in the mounted repo
+  (`runs/`). Student instructions must use `--user $(id -u):$(id -g)` (or the
+  compose `user:` key) — verify wandb/HOME still work under that.
+- Image is 14.1 GB (CUDA torch + MuJoCo + Meta-World). Consider a CPU-torch
+  default (`TORCH_INDEX_URL` arg already exists) and/or dropping metaworld for
+  the student image; measure before deciding.
 
 ## Phase 2 — Student quick-start image
 
 The point of the whole exercise for the class: nobody compiles anything.
 
-- [ ] 2.1 `docker/Dockerfile.gfootball` (separate from the MuJoCo image to keep
-      the base image lean): apt deps from Phase 0, `pip install` recipe from
-      0.8, then t-zero `requirements.txt`. CPU-only torch is acceptable here
-      (DQN on a 115-d vector; students' laptops rarely have CUDA under Docker).
-      Provide `docker-compose` service `gfootball` mirroring the existing one.
-- [ ] 2.2 `cluster/t-zero-gfootball.def` (Apptainer) for the cluster path.
+- [x] 2.1 `docker/Dockerfile.gfootball` (built during Phase 1 as the dev env;
+      ubuntu:22.04 → Py 3.10; default torch wheel is CUDA-enabled and falls
+      back to CPU; `TORCH_INDEX_URL` build-arg for a CPU-only variant).
+      `docker-compose.yml` has a `gfootball` service (CPU by default).
+- [x] 2.2 `cluster/t-zero-gfootball.def` (Apptainer) — written, **not yet
+      built** (no Apptainer on this host).
 - [ ] 2.3 Verify the image on a clean machine: `docker build` time, image
       size, `python train.py --config dqn_gfootball_empty_goal` starts
       training within the first minute; wandb login via `.env` works.

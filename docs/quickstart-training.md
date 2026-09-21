@@ -18,6 +18,13 @@ preconfigured):
 docker compose run t-zero   # builds from docker/Dockerfile, mounts the repo
 ```
 
+Google Research Football (`GFootball/*` envs) needs a compiled game engine and
+has its own image — see [docker/Dockerfile.gfootball](../docker/Dockerfile.gfootball):
+
+```bash
+docker compose run --rm gfootball python train.py --config dqn_gfootball_empty_goal
+```
+
 Two environment variables matter:
 
 - `MUJOCO_GL=egl` — required for MuJoCo rendering on headless machines
