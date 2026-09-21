@@ -19,7 +19,8 @@ docker compose run t-zero   # builds from docker/Dockerfile, mounts the repo
 ```
 
 Google Research Football (`GFootball/*` envs) needs a compiled game engine and
-has its own image — see [docker/Dockerfile.gfootball](../docker/Dockerfile.gfootball):
+has its own image (CPU-only by default, ~4 GB; GPU build documented in
+[docker/Dockerfile.gfootball](../docker/Dockerfile.gfootball)):
 
 ```bash
 docker compose run --rm gfootball python train.py --config dqn_gfootball_empty_goal

@@ -2,10 +2,10 @@
 #
 # gfootball ships a C++ engine that must be compiled against SDL2/Boost, and its
 # upstream Python pins (gym<=0.21) no longer install on modern pip.  This image
-# does that work once so students only need Docker.  Runs on CPU by default;
-# with an NVIDIA GPU + nvidia-container-toolkit add `--gpus all` (or use the
-# `gfootball` service in docker-compose.yml).
+# does that work once so students only need Docker.
 #
+# Default build is CPU-only (~4 GB): the DQN baseline is a small MLP on a 115-d
+# vector and gains nothing from a GPU.
 #   docker build -f docker/Dockerfile.gfootball -t t-zero-gfootball .
 #   docker run --rm -it --user "$(id -u):$(id -g)" -e HOME=/tmp/home \
 #       -v "$PWD":/t-zero --env-file .env t-zero-gfootball \
@@ -13,9 +13,10 @@
 # (--user keeps runs/ and wandb/ owned by you on Linux; HOME gives wandb a
 # writable directory. Or simply: docker compose run --rm gfootball ...)
 #
-# Smaller CPU-only variant (no CUDA libs, ~3 GB less):
-#   docker build -f docker/Dockerfile.gfootball \
-#       --build-arg TORCH_INDEX_URL=https://download.pytorch.org/whl/cpu -t t-zero-gfootball .
+# GPU build (~14 GB; CUDA-enabled torch from PyPI, needs an NVIDIA driver +
+# nvidia-container-toolkit on the host, then run with `--gpus all`):
+#   docker build -f docker/Dockerfile.gfootball --build-arg TORCH_INDEX_URL= \
+#       -t t-zero-gfootball:gpu .
 #
 # Rationale for every flag: docs/plans/gfootball-integration.md ("Spike findings").
 
@@ -51,9 +52,10 @@ RUN git clone --depth 1 --branch ${GFOOTBALL_REF} ${GFOOTBALL_REPO} /opt/footbal
 # on modern pip (0.21 doesn't); six is imported but missing upstream.
 RUN python3 -m pip install "gym==0.23.1" absl-py six pygame "opencv-python-headless>=4.10"
 
-# t-zero. Default torch wheel is CUDA-enabled and falls back to CPU; set
-# TORCH_INDEX_URL for a CPU-only build.
-ARG TORCH_INDEX_URL=""
+# t-zero. torch is pre-installed from TORCH_INDEX_URL (CPU wheels by default) so
+# the pin in requirements.txt is already satisfied; pass an empty
+# TORCH_INDEX_URL to get PyPI's CUDA-enabled wheel instead.
+ARG TORCH_INDEX_URL=https://download.pytorch.org/whl/cpu
 COPY requirements.txt requirements-dev.txt /tmp/
 RUN if [ -n "${TORCH_INDEX_URL}" ]; then \
         python3 -m pip install --index-url "${TORCH_INDEX_URL}" \

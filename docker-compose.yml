@@ -20,9 +20,10 @@ services:
               capabilities: [gpu]
 
   # t-zero + Google Research Football (see docker/Dockerfile.gfootball).
-  # CPU by default so it also starts on machines without an NVIDIA runtime:
+  # CPU-only image by default (~4 GB); starts on any machine with Docker.
   #   docker compose run --rm gfootball python train.py --config dqn_gfootball_empty_goal
-  # With a GPU, copy the `deploy:` block from the t-zero service above.
+  # GPU: build with `TORCH_INDEX_URL= docker compose build gfootball` (CUDA torch,
+  # ~14 GB) and copy the `deploy:` block from the t-zero service above.
   # Runs as your host user so runs/ and wandb/ are not root-owned (Linux). If
   # your uid/gid are not 1000, run `export UID GID=$(id -g)` first or put
   # UID=... / GID=... in .env.
@@ -30,6 +31,8 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.gfootball
+      args:
+        TORCH_INDEX_URL: ${TORCH_INDEX_URL-https://download.pytorch.org/whl/cpu}
     image: t-zero-gfootball:latest
     working_dir: /t-zero
     user: "${UID:-1000}:${GID:-1000}"

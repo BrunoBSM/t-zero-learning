@@ -142,9 +142,15 @@ The point of the whole exercise for the class: nobody compiles anything.
       same code path as the existing image.
       Non-root fix: compose service runs as `${UID:-1000}:${GID:-1000}` with
       `HOME=/tmp/home`; `runs/` and `wandb/` come out owned by the host user.
-      **Decision needed (Bruno):** make CPU torch the default for the student
-      image (3.95 GB) with GPU as the opt-in build arg, or keep the
-      GPU-capable default (14.1 GB)?
+      **Decision (Bruno, 2026-09-21): CPU torch is the default** for the
+      student image (`TORCH_INDEX_URL` defaults to the CPU wheel index); the
+      GPU build is the documented opt-in (`--build-arg TORCH_INDEX_URL=` /
+      `TORCH_INDEX_URL= docker compose build gfootball`). The Apptainer def
+      keeps CUDA torch (cluster target).
+- [x] 2.6 CI decision (Bruno): gfootball-specific tests do **not** run on
+      GitHub; they run wherever gfootball is installed, i.e. inside the image
+      (`docker compose run --rm gfootball python -m pytest tests/test_gfootball.py`).
+      On GitHub they show as skipped.
 - [ ] 2.4 Windows/macOS notes (Docker Desktop, volume mount path quirks,
       `xvfb` only needed for video). One page in the handout, not more.
       Draft notes (to be moved into the handout / Phase 3 doc):
@@ -164,10 +170,6 @@ The point of the whole exercise for the class: nobody compiles anything.
       students `docker pull` instead of `docker build`. **Nothing is published
       without Bruno's explicit consent** — the Dockerfile is the deliverable;
       a prebuilt image is a convenience to be decided on after 2.3.
-- [ ] 2.6 CI: gfootball tests are skipped on GitHub (no engine there). Optional
-      second CI job that builds `Dockerfile.gfootball` and runs
-      `tests/test_gfootball.py` inside it — only if Bruno wants the path
-      guarded on every PR (adds ~10 min without layer caching).
 
 ## Phase 3 — Environment reference for students (after Phase 2)
 

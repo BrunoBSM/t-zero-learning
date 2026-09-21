@@ -1,6 +1,7 @@
 # Apptainer/Singularity definition for t-zero + Google Research Football.
 # Mirrors docker/Dockerfile.gfootball (see that file for the rationale of every
-# flag; spike notes in docs/plans/gfootball-integration.md).
+# flag; spike notes in docs/plans/gfootball-integration.md), except that torch
+# is the CUDA-enabled PyPI wheel: this file targets the GPU cluster.
 #
 # Build:
 #   apptainer build --fakeroot t-zero-gfootball.sif cluster/t-zero-gfootball.def
