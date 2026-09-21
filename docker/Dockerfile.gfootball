@@ -7,8 +7,11 @@
 # `gfootball` service in docker-compose.yml).
 #
 #   docker build -f docker/Dockerfile.gfootball -t t-zero-gfootball .
-#   docker run --rm -it -v "$PWD":/t-zero --env-file .env t-zero-gfootball \
+#   docker run --rm -it --user "$(id -u):$(id -g)" -e HOME=/tmp/home \
+#       -v "$PWD":/t-zero --env-file .env t-zero-gfootball \
 #       python train.py --config dqn_gfootball_empty_goal
+# (--user keeps runs/ and wandb/ owned by you on Linux; HOME gives wandb a
+# writable directory. Or simply: docker compose run --rm gfootball ...)
 #
 # Smaller CPU-only variant (no CUDA libs, ~3 GB less):
 #   docker build -f docker/Dockerfile.gfootball \

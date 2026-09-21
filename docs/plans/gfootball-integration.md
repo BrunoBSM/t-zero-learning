@@ -100,9 +100,17 @@ points.
       pre-existing DQN smoke gap (`SMOKE_SETTINGS` has no `dqn` entry).
 - [~] 1.6 Smoke: 3000-step run with the instructor solution → model.pt +
       10 greedy eval episodes + `eval-episode-0.mp4` (640×360, 10 fps) in
-      47 s wall. Full 200k run in progress: ~55–65 steps/s once updates start
-      (CPU, host shared with another job) → ~1 h. Revisit `train_frequency`
-      if learning is fine but wall time is the bottleneck for students.
+      47 s wall. Full 200k run: 27 min (~125 sps, CPU shared with another
+      job). Training `r_last100` hovered 1.1–1.5 under ε-greedy; **final
+      greedy eval = 0.9 on all 10 episodes** (reaches 9 checkpoint zones,
+      never scores). Baseline config does *not* solve `empty_goal_close` yet.
+      Decision (Bruno, 2026-09-21): no tuning for now. Eval diversity: fixed
+      — the shim now draws one `game_engine_random_seed` (+ team-processing
+      order) per episode from the Gymnasium RNG, so `reset(seed=)` yields a
+      reproducible sequence of *different* episodes. Caveat: the seed only
+      matters where the engine makes random decisions (built-in AI);
+      `empty_goal_close` has none, so greedy eval episodes there are
+      identical by nature of the scenario.
 - [x] 1.7 Docs: worked-example paragraph in `docs/adding-a-new-environment.md`
       (Case 3 + 4); quickstart one-liner; `docker-compose.yml` `gfootball`
       service; `cluster/t-zero-gfootball.def`.
@@ -125,16 +133,64 @@ The point of the whole exercise for the class: nobody compiles anything.
       `docker-compose.yml` has a `gfootball` service (CPU by default).
 - [x] 2.2 `cluster/t-zero-gfootball.def` (Apptainer) — written, **not yet
       built** (no Apptainer on this host).
-- [ ] 2.3 Verify the image on a clean machine: `docker build` time, image
-      size, `python train.py --config dqn_gfootball_empty_goal` starts
-      training within the first minute; wandb login via `.env` works.
+- [x] 2.3 Measurements (this host, 12 cores, fast link; another job running):
+      full image (CUDA torch) **8 m 43 s from scratch, 14.1 GB**; CPU-torch
+      variant **3.95 GB** (torch/CUDA layer is 11.7 GB of the full image),
+      6 min with the engine layer cached. Engine compile alone ≈ 100 s.
+      Training starts within ~10 s of `docker compose run`. wandb offline
+      verified as a non-root user; online login via `.env` untested but is the
+      same code path as the existing image.
+      Non-root fix: compose service runs as `${UID:-1000}:${GID:-1000}` with
+      `HOME=/tmp/home`; `runs/` and `wandb/` come out owned by the host user.
+      **Decision needed (Bruno):** make CPU torch the default for the student
+      image (3.95 GB) with GPU as the opt-in build arg, or keep the
+      GPU-capable default (14.1 GB)?
 - [ ] 2.4 Windows/macOS notes (Docker Desktop, volume mount path quirks,
       `xvfb` only needed for video). One page in the handout, not more.
-- [ ] 2.5 Decide whether to publish a prebuilt image (GHCR / Docker Hub) so
-      students `docker pull` instead of `docker build`. Strongly preferred if
-      build time > ~10 min.
+      Draft notes (to be moved into the handout / Phase 3 doc):
+      - Linux: `docker compose run --rm gfootball ...`; if uid/gid ≠ 1000,
+        `export UID GID=$(id -g)` first. GPU: nvidia-container-toolkit +
+        copy the `deploy:` block (or `docker run --gpus all`).
+      - macOS (Docker Desktop, Apple Silicon): image is x86_64; runs under
+        emulation — expect a large slowdown; build natively with
+        `docker build --platform linux/arm64` (untested; engine should compile).
+        No GPU.
+      - Windows: Docker Desktop with WSL2 backend; clone the repo *inside* the
+        WSL filesystem (bind mounts from `C:\` are very slow); use the WSL
+        shell for the commands above. No GPU without WSL2 CUDA setup.
+      - Videos need no display (`xvfb` not required); rendering is slow
+        software GL — the final eval video takes ~1 min.
+- [!] 2.5 Decide whether to publish a prebuilt image (GHCR / Docker Hub) so
+      students `docker pull` instead of `docker build`. **Nothing is published
+      without Bruno's explicit consent** — the Dockerfile is the deliverable;
+      a prebuilt image is a convenience to be decided on after 2.3.
+- [ ] 2.6 CI: gfootball tests are skipped on GitHub (no engine there). Optional
+      second CI job that builds `Dockerfile.gfootball` and runs
+      `tests/test_gfootball.py` inside it — only if Bruno wants the path
+      guarded on every PR (adds ~10 min without layer caching).
 
-## Phase 3 — Project handout (outline only; content is Bruno's)
+## Phase 3 — Environment reference for students (after Phase 2)
+
+`docs/gfootball-environment.md`: what the environment offers regardless of
+what t-zero currently wires up. Outline agreed 2026-09-21:
+
+- The game: 3D physics engine, one action = 100 ms, sticky actions.
+- Scenarios: the 11 academy scenarios (description + difficulty), full-match
+  variants (`11_vs_11_easy/hard/stochastic`, `1_vs_1_easy`), custom scenario files.
+- Observations: `raw` dict layout, `simple115v2` index map, `extracted`
+  (SMM 72×96×4), `pixels`; frame stacking.
+- Actions: the 19-action table, release actions, action set `v2`.
+- Rewards: `scoring` vs `checkpoints` (zone geometry), custom reward wrappers.
+- Beyond single-agent: several players, both teams, opponent difficulty,
+  self-play / pretrained opponents via `extra_players`.
+- Tooling: replays/dumps, `play_game` with a keyboard, rendering caveats.
+- Supported by t-zero today vs. what a student would have to add (pointers to
+  the exact extension points).
+
+Verify every claim against the installed 2.10.3 source in the image — upstream
+docs drift from code (`simple115_v2` vs `simple115v2`).
+
+## Phase 4 — Project handout (outline only; content is Bruno's)
 
 - Baseline: the provided config + a reference wandb run.
 - Axes students can explore: scenario progression (`empty_goal_close` →

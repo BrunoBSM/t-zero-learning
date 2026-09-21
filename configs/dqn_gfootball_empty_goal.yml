@@ -5,6 +5,8 @@
 # after 400 steps. Reward = +1 per goal plus +0.1 for each of 10 zones entered
 # with the ball ("checkpoints" shaping), so an episode return of ~2.0 is a goal.
 # This is the entry-level scenario: a random policy already scores sometimes.
+# There is no opposing AI decision in it, so given the same actions every
+# episode is identical -- a greedy policy's eval episodes all score the same.
 #
 # Requires gfootball (docker/Dockerfile.gfootball). The engine runs ~250 steps/s
 # on one CPU core, so 200k steps is ~15-20 min; num_envs must be 1 for dqn.

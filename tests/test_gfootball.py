@@ -67,7 +67,7 @@ def test_seed_makes_trajectory_reproducible():
     actions = rng.integers(19, size=40)
 
     def rollout(seed):
-        env = GFootballEnv("academy_empty_goal_close")
+        env = GFootballEnv("academy_run_to_score_with_keeper")
         env.reset(seed=seed)
         out = []
         for a in actions:
@@ -83,17 +83,33 @@ def test_seed_makes_trajectory_reproducible():
     assert a.shape != c.shape or not np.array_equal(a, c)
 
 
-def test_reseed_rebuilds_engine_only_when_seed_changes():
-    env = GFootballEnv("academy_empty_goal_close")
-    env.reset(seed=3)
-    engine = env._env
-    env.reset(seed=3)
-    assert env._env is engine
-    env.reset()  # no seed: keep the engine
-    assert env._env is engine
-    env.reset(seed=4)
-    assert env._env is not engine
-    env.close()
+def test_episodes_differ_within_a_run_but_repeat_across_seeded_runs():
+    """One run seed -> a reproducible *sequence* of distinct engine seeds, so a
+    deterministic policy is evaluated on different episodes, reproducibly.
+    Uses a scenario with a built-in-AI keeper: that is where the engine RNG
+    actually influences the dynamics."""
+    actions = np.random.default_rng(1).integers(19, size=60)
+
+    def two_episodes(seed):
+        env = GFootballEnv("academy_run_to_score_with_keeper")
+        out = []
+        for i in range(2):
+            env.reset(seed=seed if i == 0 else None)
+            obs = []
+            for a in actions:
+                o, _, term, trunc, _ = env.step(int(a))
+                obs.append(o)
+                if term or trunc:
+                    break
+            out.append(np.stack(obs))
+        env.close()
+        return out
+
+    a1, a2 = two_episodes(5)
+    b1, b2 = two_episodes(5)
+    assert a1.shape != a2.shape or not np.array_equal(a1, a2)
+    np.testing.assert_array_equal(a1, b1)
+    np.testing.assert_array_equal(a2, b2)
 
 
 def test_scenario_end_is_terminated_not_truncated():

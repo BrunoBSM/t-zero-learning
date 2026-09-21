@@ -13,9 +13,13 @@ docs/plans/gfootball-integration.md):
 - ``representation="simple115v2"`` gives a flat ``(115,) float32`` vector and
   the default action set is ``Discrete(19)`` — the input contract of the
   ``discrete_control`` wrapper stack / DQN.
-- Randomness is fixed at engine construction via
-  ``other_config_options["game_engine_random_seed"]``; a different seed in
-  ``reset(seed=...)`` therefore rebuilds the engine (~1 s).
+- Engine randomness is read from ``config["game_engine_random_seed"]`` at
+  every ``reset()`` (a fresh random value if the key is absent).  The shim
+  seeds ``self.np_random`` from ``reset(seed=...)`` and writes one engine seed
+  per episode, so a run seed gives a reproducible *sequence* of episodes and
+  a deterministic policy still sees different episodes.  Note the seed only
+  matters where the engine makes random decisions (built-in AI players);
+  ``academy_empty_goal_close`` is fully deterministic given the actions.
 - The engine only reports ``done``.  The raw observation's ``steps_left``
   tells us whether the scenario clock ran out (``truncated``) or the scenario
   ended on its own terms — goal, ball out, possession change (``terminated``).
@@ -88,11 +92,13 @@ class GFootballEnv(gym.Env):
         self._rewards = rewards
         self._render_resolution = tuple(int(v) for v in render_resolution)
         self._create_kwargs = dict(create_kwargs)
+        self._user_pins_team_order = "reverse_team_processing" in (
+            self._create_kwargs.get("other_config_options") or {}
+        )
 
         self._env = None
-        self._engine_seed: int | None = None
         self._render_requested = False
-        self._build_engine(seed=None)
+        self._build_engine()
 
         obs_space = self._env.observation_space
         self.observation_space = gym.spaces.Box(
@@ -106,18 +112,13 @@ class GFootballEnv(gym.Env):
     # Engine lifecycle
     # ------------------------------------------------------------------
 
-    def _build_engine(self, seed: int | None) -> None:
+    def _build_engine(self) -> None:
         # Deferred import: keeps `import envs` cheap and banner-free when
         # gfootball is installed but unused.
         os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
         from gfootball.env import create_environment
 
-        if self._env is not None:
-            self._env.close()
-
         other = dict(self._create_kwargs.get("other_config_options") or {})
-        if seed is not None:
-            other["game_engine_random_seed"] = int(seed)
         # Resolution is read when the (rendering) engine is created, so it
         # must be passed up front even though rendering starts off.
         width, height = self._render_resolution
@@ -134,7 +135,6 @@ class GFootballEnv(gym.Env):
             other_config_options=other,
             **kwargs,
         )
-        self._engine_seed = seed
         self._rendering_on = False
 
     def _raw_observation(self) -> dict:
@@ -146,8 +146,14 @@ class GFootballEnv(gym.Env):
 
     def reset(self, *, seed: int | None = None, options: dict | None = None):
         super().reset(seed=seed)
-        if seed is not None and seed != self._engine_seed:
-            self._build_engine(seed=int(seed))
+        # Both keys are read by the scenario builder inside the engine's reset.
+        # reverse_team_processing mirrors the processing order; upstream derives
+        # it from the seed's parity once per env, we do it once per episode.
+        engine_seed = int(self.np_random.integers(0, 2**31 - 1))
+        config = self._env.unwrapped._config
+        config["game_engine_random_seed"] = engine_seed
+        if not self._user_pins_team_order:
+            config["reverse_team_processing"] = bool(engine_seed % 2)
         obs = self._env.reset()
         return np.asarray(obs, dtype=np.float32), {}
 
