@@ -1,10 +1,9 @@
-# Trabalho: Deep Q-Networks (DQN)
+# Atividade: Deep Q-Networks (DQN)
 
-**Entrega: uma semana a partir de hoje.** Individual ou em dupla (identifique a dupla no relatório).
+Individual ou em dupla (identifique a dupla no relatório).
 
-Você recebe uma implementação quase completa de DQN ([algorithms/dqn.py](../algorithms/dqn.py)),
-adaptada do [CleanRL](https://github.com/vwxyzjn/cleanrl) e integrada ao harness de
-treinamento deste repositório. O algoritmo inteiro — replay buffer, alvo de TD, rollout
+Você recebe uma implementação quase completa de DQN ([algorithms/dqn.py](../algorithms/dqn.py)) e integrada ao harness de
+treinamento deste repositório (https://github.com/BrunoBSM/t-zero-learning). O algoritmo inteiro — replay buffer, alvo de TD, rollout
 epsilon-greedy, target network — vive nesse único arquivo; o framework fornece a
 infraestrutura de execução (configs, seeds, logging, diretórios de runs). Seu trabalho
 tem duas partes: uma parte curta de implementação e um relatório experimental —

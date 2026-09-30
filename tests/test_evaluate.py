@@ -52,11 +52,11 @@ def test_explicit_network_and_wrappers_win_over_defaults():
     cfg = {
         "algorithm": "dqn",
         "env_id": "CartPole-v1",
-        "network": "networks.discrete_actor_critic_solution.DiscreteActorCritic",
+        "network": "networks.discrete_actor_critic.DiscreteActorCritic",
         "env_wrappers": "continuous_control",
     }
     run_cfg = evaluate.parse_run_config(cfg)
-    assert run_cfg["Model"] is get_network("networks.discrete_actor_critic_solution.DiscreteActorCritic")
+    assert run_cfg["Model"] is get_network("networks.discrete_actor_critic.DiscreteActorCritic")
     assert run_cfg["wrappers"] is continuous_control_wrappers
 
 

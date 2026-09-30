@@ -1,0 +1,36 @@
+# A2C assignment config — CartPole-v1. Trains in a few minutes on CPU.
+#
+# Every key maps onto a dataclass field (unknown keys fail at startup):
+#   run-level keys -> core/base_config.py::RunConfig (incl. network,
+#                     network_kwargs: the network class and its constructor args)
+#   a2c:           -> algorithms/a2c.py::A2CConfig
+# Keys left out keep the dataclass defaults.
+#
+# Ablation runs override keys from the CLI, e.g.:
+#   python train.py --config a2c_cartpole --override a2c.num_steps=32 seed=2
+
+algorithm: a2c
+env_id: CartPole-v1
+seed: 1
+cuda: false             # CPU is plenty for this env
+total_timesteps: 500000 # reaches ~500 mean return (the env maximum)
+num_envs: 8             # parallel actors stepped in lockstep
+
+track: true             # log metrics to Weights & Biases (set WANDB_PROJECT in .env)
+capture_video: true     # record a video during the final evaluation
+save_model: true        # write model.pt + run a final evaluation
+checkpoint_every: 0
+
+network: DiscreteActorCritic   # a class from networks/__init__.py
+network_kwargs:                # passed to its constructor — see its signature
+  activation: Tanh
+  hidden_layers_size: 64
+
+a2c:
+  learning_rate: 7.0e-4
+  num_steps: 5
+  gamma: 0.99
+  vf_coef: 0.5
+  ent_coef: 0.01
+  max_grad_norm: 0.5
+  use_baseline: true

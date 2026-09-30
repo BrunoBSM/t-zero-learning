@@ -27,6 +27,7 @@ ALGORITHMS: dict[str, tuple[str, str, str]] = {
     "ppo_continuous_action": ("algorithms.ppo_continuous_action", "PPO", "Args"),
     "ppo_continuous_action_split_optim": ("algorithms.ppo_continuous_action_split_optim", "PPO", "Args"),
     "dqn": ("algorithms.dqn", "DQN", "Args"),
+    "a2c": ("algorithms.a2c", "A2C", "Args"),
 }
 
 
