@@ -36,9 +36,9 @@ register(
 # docker/Dockerfile.gfootball). Registered only when the package is present so
 # the rest of the framework never notices its absence.
 if importlib.util.find_spec("gfootball") is not None:
-    from envs.custom_envs.gfootball import ACADEMY_SCENARIOS
+    from envs.custom_envs.gfootball import ACADEMY_SCENARIOS, GAME_SCENARIOS
 
-    for _scenario in ACADEMY_SCENARIOS:
+    for _scenario in ACADEMY_SCENARIOS + GAME_SCENARIOS:
         register(
             id=f"GFootball/{_scenario}-v0",
             entry_point="envs.custom_envs.gfootball:make_gfootball_env",

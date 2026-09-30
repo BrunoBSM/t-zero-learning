@@ -9,6 +9,8 @@ path DQN uses.
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 import gymnasium as gym
 import numpy as np
 import pytest
@@ -17,7 +19,7 @@ pytest.importorskip("gfootball")
 
 import envs.custom_envs  # noqa: E402,F401 — registration side effects
 from envs.adapters import get_adapter  # noqa: E402
-from envs.custom_envs.gfootball import ACADEMY_SCENARIOS, GFootballEnv  # noqa: E402
+from envs.custom_envs.gfootball import ACADEMY_SCENARIOS, GAME_SCENARIOS, GFootballEnv  # noqa: E402
 from envs.factory import make_env  # noqa: E402
 from envs.wrappers import discrete_control_wrappers  # noqa: E402
 
@@ -36,8 +38,8 @@ def _run_episode(env, policy, max_steps=500):
     raise AssertionError("episode did not end")
 
 
-def test_all_academy_scenarios_registered():
-    for scenario in ACADEMY_SCENARIOS:
+def test_all_academy_and_game_scenarios_registered():
+    for scenario in ACADEMY_SCENARIOS + GAME_SCENARIOS:
         assert f"GFootball/{scenario}-v0" in gym.registry
 
 
@@ -220,4 +222,107 @@ def test_env_kwargs_reward_variant():
     env = gym.make(ENV_ID, rewards="scoring")
     total, *_ = _run_episode(env, lambda obs: 0)
     assert total == 0.0
+    env.close()
+
+
+# ---------------------------------------------------------------------------
+# Hooks for student extensions: several players, opponents, raw observations
+# ---------------------------------------------------------------------------
+
+TEMPLATE_SUBMISSION = str(Path(__file__).resolve().parents[1] / "arena" / "template")
+
+
+class _RecordingOpponent:
+    """Opponent object: records what it is shown, always idles."""
+
+    controlled_players = 1
+
+    def __init__(self):
+        self.resets = 0
+        self.seen = []
+
+    def reset(self):
+        self.resets += 1
+
+    def act(self, observations):
+        self.seen.append(observations)
+        return [0] * len(observations)
+
+
+def test_raw_observations_are_the_arena_format_and_match_the_vector():
+    from gfootball.env.wrappers import Simple115StateWrapper
+
+    env = GFootballEnv("5_vs_5", rewards="scoring")
+    obs, _ = env.reset(seed=0)
+    for _ in range(5):
+        obs, *_ = env.step(5)
+    raw = env.raw_observations()
+    assert len(raw) == 1 and {"active", "left_team", "sticky_actions", "designated"} <= set(raw[0])
+    np.testing.assert_array_equal(Simple115StateWrapper.convert_observation(raw, True)[0], obs)
+    env.close()
+
+
+def test_several_controlled_players():
+    env = GFootballEnv("5_vs_5", controlled_players=2)
+    assert env.observation_space.shape == (2, 115)
+    assert env.action_space == gym.spaces.MultiDiscrete([19, 19])
+    obs, _ = env.reset(seed=0)
+    assert obs.shape == (2, 115)
+    obs, reward, terminated, truncated, info = env.step(np.array([5, 3]))
+    assert obs.shape == (2, 115) and type(reward) is float
+    assert info["player_rewards"].shape == (2,)
+    assert len(env.raw_observations()) == 2
+    env.close()
+
+
+def test_discrete_control_stack_rejects_several_players():
+    """Loud failure: (N, 115) obs trip the stack's image guard before the action check."""
+    env = gym.make("GFootball/5_vs_5-v0", controlled_players=2)
+    with pytest.raises(TypeError):
+        discrete_control_wrappers(env, "GFootball/5_vs_5-v0", 0.99)
+    env.close()
+
+
+@pytest.mark.parametrize("opponent", ["random", TEMPLATE_SUBMISSION])
+def test_opponent_specs_keep_the_single_agent_contract(opponent):
+    env = gym.make("GFootball/5_vs_5-v0", opponent=opponent)
+    assert env.observation_space.shape == (115,)
+    assert env.action_space == gym.spaces.Discrete(19)
+    obs, _ = env.reset(seed=0)
+    for _ in range(20):
+        obs, reward, terminated, truncated, _ = env.step(env.action_space.sample())
+        assert obs.shape == (115,) and type(reward) is float
+    env.close()
+
+
+def test_opponent_sees_its_own_mirrored_view_and_is_reset():
+    opponent = _RecordingOpponent()
+    env = GFootballEnv("5_vs_5", opponent=opponent)
+    env.reset(seed=0)
+    env.step(0)
+    assert opponent.resets == 1
+    kickoff = opponent.seen[0][0]
+    # Right team, but it sees itself as left_team on its own (negative-x) half.
+    assert np.all(np.asarray(kickoff["left_team"])[:, 0] <= 0.01)
+    env.reset(seed=1)
+    assert opponent.resets == 2
+    env.close()
+
+
+def test_set_opponent_applies_at_next_reset_and_rebuilds_when_needed():
+    env = GFootballEnv("5_vs_5")
+    env.reset(seed=0)
+    assert env._n_right == 0
+    opponent = _RecordingOpponent()
+    env.set_opponent(opponent)
+    env.step(0)
+    assert opponent.seen == []          # not before the next reset
+    env.reset(seed=1)
+    assert env._n_right == 1
+    env.step(0)
+    assert len(opponent.seen) == 1
+    env.set_opponent("builtin")
+    env.reset(seed=2)
+    assert env._n_right == 0
+    env.step(0)
     env.close()
