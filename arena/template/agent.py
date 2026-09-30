@@ -5,7 +5,7 @@ Copy this folder, keep the ``Agent`` interface, replace the policy::
     cp -r arena/template my_team
     python -m arena.check my_team
 
-The contract (``docs/gfootball-project-delivery.md``):
+The contract (``assignments/gfootball.md``):
 
 - ``Agent(path)``: ``path`` is this folder. Load weights from it
   (``path / "weights" / "model.pt"``). Do not import from the t-zero checkout:

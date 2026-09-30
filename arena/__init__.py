@@ -2,7 +2,7 @@
 
 A *submission* is a folder with ``agent.py`` (defining ``class Agent``),
 ``manifest.yml`` and whatever files the agent loads (see
-``docs/gfootball-project-delivery.md`` and ``arena/template/``).  The same code
+``assignments/gfootball.md`` and ``arena/template/``).  The same code
 runs on the student's machine (``python -m arena.check``) and on the grader's
 (``arena.match``, ``arena.tournament``), always inside the gfootball image.
 

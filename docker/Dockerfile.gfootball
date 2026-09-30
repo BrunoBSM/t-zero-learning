@@ -28,7 +28,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PYGAME_HIDE_SUPPORT_PROMPT=1
 
 RUN apt-get update && apt-get install -yq --no-install-recommends \
-    git cmake build-essential python3-pip python3-dev \
+    git cmake build-essential python3-pip python3-dev python-is-python3 \
     libgl1-mesa-dev libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-gfx-dev \
     libboost-all-dev libdirectfb-dev libst-dev mesa-utils \
     ffmpeg libegl1 libglfw3 libglew2.2 \

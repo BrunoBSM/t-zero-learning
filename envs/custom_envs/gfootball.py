@@ -7,8 +7,8 @@ scenario to the Gymnasium 1.x contract so the rest of the framework can treat
 it like any other env.  Ids are registered in ``envs/custom_envs/__init__.py``
 (only when gfootball is importable) as ``GFootball/<scenario>-v0``.
 
-Engine facts this shim relies on (verified against gfootball 2.10.3, see
-docs/plans/gfootball-integration.md):
+Engine facts this shim relies on (verified against gfootball 2.10.3; the
+full reference is docs/gfootball-environment.md):
 
 - ``representation="simple115v2"`` gives a flat ``(115,) float32`` vector and
   the default action set is ``Discrete(19)`` — the input contract of the
