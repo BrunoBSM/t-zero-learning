@@ -84,8 +84,8 @@ Any field can be overridden from the CLI with dotted paths:
 # run-level fields
 python train.py --config ppo_pendulum --override seed=7 total_timesteps=200000
 
-# nested sections: agent.<field> and <algorithm_name>.<field>
-python train.py --config ppo_pendulum --override agent.activation=ReLU \
+# nested keys: network_kwargs.<arg> and <algorithm_name>.<field>
+python train.py --config ppo_pendulum --override network_kwargs.activation=ReLU \
     ppo_continuous_action.learning_rate=3e-4
 
 # algo. is an algorithm-agnostic alias for the algorithm's own section

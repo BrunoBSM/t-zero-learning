@@ -32,7 +32,8 @@ import yaml
 from algorithms.base import evaluate_checkpoint
 from envs import make_env  # noqa: F401 — registers custom envs/adapters on import
 from envs.wrappers import continuous_control_wrappers, resolve_wrapper_stack
-from networks import ContinuousActorCritic
+from core.config_loader import translate_legacy_agent_section
+from networks import get_network
 
 MODEL_FILE = "model.pt"
 CONFIG_FILE = "config.yml"
@@ -57,10 +58,10 @@ def iter_checkpoint_run_dirs(run_path: Path) -> list[Path]:
 def parse_run_config(cfg: dict) -> dict | None:
     """Extract eval-relevant settings from a saved run ``config.yml``.
 
-    Handles the current nested format (``agent:`` plus a section named after
-    the algorithm, ``env_id`` + ``env_kwargs``) and falls back to legacy
-    formats (pre-rename ``ppo:`` section; flat top-level ``activation`` /
-    ``gamma``, ``task: "EnvId=>json"``).
+    Handles the current format (``network`` + ``network_kwargs``, a section
+    named after the algorithm, ``env_id`` + ``env_kwargs``) and falls back to
+    legacy formats (``agent:`` section; pre-rename ``ppo:`` section; flat
+    top-level ``activation`` / ``gamma``, ``task: "EnvId=>json"``).
     Returns None when no env id can be determined.
     """
     env_id = cfg.get("env_id")
@@ -74,19 +75,15 @@ def parse_run_config(cfg: dict) -> dict | None:
     if not env_id:
         return None
 
-    agent = cfg.get("agent") or {}
+    if "agent" not in cfg and "network_kwargs" not in cfg:  # legacy: flat top-level keys
+        cfg = {**cfg, "agent": {k: cfg[k] for k in ("activation", "hidden_layers_size") if k in cfg}}
+    cfg = translate_legacy_agent_section(cfg, "ContinuousActorCritic")
     algo = cfg.get(cfg.get("algorithm", ""), None) or cfg.get("ppo") or {}
     return {
         "env_id": env_id,
         "env_kwargs": env_kwargs,
-        "model_kwargs": {
-            "activation": agent.get("activation", cfg.get("activation", "Tanh")),
-            "hidden_layers_size": int(
-                agent.get("hidden_layers_size", cfg.get("hidden_layers_size", 64))
-            ),
-            "use_obs_norm": bool(agent.get("use_obs_norm", False)),
-            "obs_norm_epsilon": float(agent.get("obs_norm_epsilon", 1e-8)),
-        },
+        "Model": get_network(cfg.get("network") or "ContinuousActorCritic"),
+        "model_kwargs": dict(cfg.get("network_kwargs") or {}),
         "gamma": float(algo.get("gamma", cfg.get("gamma", 0.99))),
         "wrappers": resolve_wrapper_stack(
             cfg.get("env_wrappers", ""), continuous_control_wrappers
@@ -158,7 +155,7 @@ def main() -> None:
         results = evaluate_checkpoint(
             str(run_dir / MODEL_FILE),
             run_cfg["env_id"],
-            ContinuousActorCritic,
+            run_cfg["Model"],
             device=device,
             eval_episodes=int(args.eval_episodes),
             capture_video=not args.no_video,

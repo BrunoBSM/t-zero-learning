@@ -30,6 +30,8 @@ Defined in `core/base_config.py::RunConfig`; shared by every algorithm.
 | `checkpoint_every` | `int` | `0` | if > 0, save ``checkpoint_gs{step}.pt`` resume bundles every this many env timesteps |
 | `checkpoints_to_keep` | `int` | `3` | when ``checkpoint_every`` > 0, keep at most this many checkpoint files (oldest deleted) |
 | `special_log_every` | `int` | `100000` | how often (in global env steps) to do special logging (e.g., weight histograms) |
+| `network` | `str` | `''` | network class the algorithm builds: a name exported from ``networks/__init__.py`` (e.g. 'QNetwork') or a dotted import path; each algorithm sets its own default |
+| `network_kwargs` | `dict` | `{}` | keyword arguments forwarded to the network constructor, ``network(envs, **network_kwargs)``; see its signature for what it accepts (e.g. activation, hidden_layers_size). Unset keys keep the constructor defaults |
 | `env_id` | `str` | `'HalfCheetah-v4'` | the gymnasium environment id (e.g. 'HalfCheetah-v4', 'Meta-World/MT10') |
 | `env_kwargs` | `dict` | `{}` | keyword arguments forwarded to ``gym.make(env_id, **env_kwargs)`` |
 | `env_wrappers` | `str` | `''` | named preprocessing stack from ``envs.wrappers.WRAPPER_STACKS`` (e.g. 'continuous_control', 'none'); empty means the algorithm's default stack. Per-env adapter overrides (``EnvAdapter.apply_wrappers``) take precedence. |
@@ -46,21 +48,9 @@ in during `initialize()`; they appear in saved run `config.yml` files):
 | `num_iterations` | `int` | `0` | the number of iterations (computed in runtime) |
 | `env_kwargs_id` | `str` | `''` | short hash of env_kwargs used in run names (computed in runtime) |
 
-## `agent:` section
-
-Defined in `core/base_config.py::AgentConfig`; network architecture,
-shared by every algorithm.
-
-| Key | Type | Default | Description |
-|---|---|---|---|
-| `activation` | `str` | `'Tanh'` | hidden activation: attribute name on ``torch.nn`` (e.g. Tanh, ReLU, GELU, SiLU) |
-| `hidden_layers_size` | `int` | `64` | width of each hidden layer in the actor and critic MLPs |
-| `use_obs_norm` | `bool` | `False` | opt-in running mean/var observation normalization owned by the agent (stats live in the agent's state_dict). Meant for flat continuous observations; requires algorithm support — the rollout loop must call ``agent.update_norm`` / ``agent.normalize_obs`` (both PPO variants do; see docs/adding-a-new-algorithm.md) |
-| `obs_norm_epsilon` | `float` | `1e-08` | numerical-stability epsilon in the obs normalization denominator (only used when ``use_obs_norm`` is true) |
-
 ## `dqn:` section
 
-Defined in `algorithms/dqn.py::DQNConfig`.
+Defined in `algorithms/dqn.py::DQNConfig`. Default `network`: `QNetwork`.
 
 | Key | Type | Default | Description |
 |---|---|---|---|
@@ -78,7 +68,7 @@ Defined in `algorithms/dqn.py::DQNConfig`.
 
 ## `ppo_continuous_action:` section
 
-Defined in `algorithms/ppo_continuous_action.py::PPOConfig`.
+Defined in `algorithms/ppo_continuous_action.py::PPOConfig`. Default `network`: `ContinuousActorCritic`.
 
 | Key | Type | Default | Description |
 |---|---|---|---|
@@ -99,7 +89,7 @@ Defined in `algorithms/ppo_continuous_action.py::PPOConfig`.
 
 ## `ppo_continuous_action_split_optim:` section
 
-Defined in `algorithms/ppo_continuous_action_split_optim.py::PPOConfig`.
+Defined in `algorithms/ppo_continuous_action_split_optim.py::PPOConfig`. Default `network`: `ContinuousActorCritic`.
 
 | Key | Type | Default | Description |
 |---|---|---|---|

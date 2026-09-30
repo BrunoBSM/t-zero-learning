@@ -12,8 +12,8 @@
 # on one CPU core, so 200k steps is ~15-20 min; num_envs must be 1 for dqn.
 #
 # Every key maps onto a dataclass field (unknown keys fail at startup):
-#   run-level keys -> core/base_config.py::RunConfig
-#   agent:         -> core/base_config.py::AgentConfig
+#   run-level keys -> core/base_config.py::RunConfig (incl. network,
+#                     network_kwargs: the network class and its constructor args)
 #   dqn:           -> algorithms/dqn.py::DQNConfig
 #
 # Other scenarios / reward variants are env_kwargs overrides, e.g.:
@@ -37,7 +37,8 @@ capture_video: true     # final greedy evaluation is recorded (software renderin
 save_model: true        # write model.pt + run a final greedy evaluation
 checkpoint_every: 0     # dqn does not support checkpoint/resume
 
-agent:
+network: QNetwork      # a class from networks/__init__.py
+network_kwargs:        # passed to its constructor — see its signature
   activation: ReLU
   hidden_layers_size: 256
 
