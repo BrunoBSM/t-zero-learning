@@ -124,7 +124,7 @@ def test_every_algorithm_default_network_builds(algo_name):
     from networks import get_network
 
     ArgsClass, _ = _import_algorithm(algo_name)
-    discrete = algo_name in ("dqn", "a2c")
+    discrete = algo_name in ("dqn", "a2c", "ppo")
     envs = SimpleNamespace(
         single_observation_space=gym.spaces.Box(-1, 1, (4,), np.float32),
         single_action_space=gym.spaces.Discrete(2) if discrete else gym.spaces.Box(-1, 1, (2,), np.float32),

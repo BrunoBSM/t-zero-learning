@@ -80,6 +80,27 @@ Defined in `algorithms/dqn.py::DQNConfig`. Default `network`: `QNetwork`.
 | `learning_starts` | `int` | `10000` | timestep to start learning |
 | `train_frequency` | `int` | `10` | the frequency of training |
 
+## `ppo:` section
+
+Defined in `algorithms/ppo.py::PPOConfig`. Default `network`: `DiscreteActorCritic`.
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `learning_rate` | `float` | `0.00025` | the learning rate of the optimizer |
+| `num_steps` | `int` | `128` | the number of steps to run in each environment per policy rollout |
+| `anneal_lr` | `bool` | `True` | Toggle learning rate annealing for policy and value networks |
+| `gamma` | `float` | `0.99` | the discount factor gamma |
+| `gae_lambda` | `float` | `0.95` | the lambda for the general advantage estimation |
+| `num_minibatches` | `int` | `4` | the number of mini-batches |
+| `update_epochs` | `int` | `4` | the K epochs to update the policy |
+| `norm_adv` | `bool` | `True` | Toggles advantages normalization |
+| `clip_coef` | `float` | `0.2` | the surrogate clipping coefficient |
+| `clip_vloss` | `bool` | `True` | Toggles whether or not to use a clipped loss for the value function, as per the paper. |
+| `ent_coef` | `float` | `0.01` | coefficient of the entropy |
+| `vf_coef` | `float` | `0.5` | coefficient of the value function |
+| `max_grad_norm` | `float` | `0.5` | the maximum norm for the gradient clipping |
+| `target_kl` | `float | None` | `None` | the target KL divergence threshold |
+
 ## `ppo_continuous_action:` section
 
 Defined in `algorithms/ppo_continuous_action.py::PPOConfig`. Default `network`: `ContinuousActorCritic`.
