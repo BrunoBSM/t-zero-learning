@@ -15,9 +15,7 @@ O PPO é o A2C da atividade anterior com quatro mudanças:
    $[1-\epsilon, 1+\epsilon]$, o que impede que essas épocas afastem a política demais
    dos dados.
 
-A implementação segue linha a linha o
-[`ppo.py` do CleanRL](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo.py),
-integrada ao mesmo harness do A2C. Ela vive em
+A implementação segue a linha do A2C. Ela vive em
 [algorithms/ppo.py](../algorithms/ppo.py). Vale a pena abrir esse arquivo ao lado de
 [algorithms/a2c.py](../algorithms/a2c.py): o rollout, o log e os checkpoints são
 iguais, e as diferenças são exatamente as quatro acima.
